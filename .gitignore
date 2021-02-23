@@ -1,0 +1,13 @@
+
+# Data folder
+Incels_dump_v2_01_02_2021/
+
+# SQL Configuration
+config.py
+
+# PyCache
+__pycache__/
+
+# Other files
+prueba.py
+
