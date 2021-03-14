@@ -8,6 +8,9 @@ config.py
 # PyCache
 __pycache__/
 
+#Articles
+articles/
+
 # Other files
 prueba.py
 

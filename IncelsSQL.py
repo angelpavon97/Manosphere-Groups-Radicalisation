@@ -2,6 +2,9 @@ import mysql.connector
 from config import config # Dictionary with mysql config
 import tldextract
 import re
+from urllib.parse import urlparse, unquote
+import os
+from pathlib import PurePosixPath
 
 class IncelsSQL:
     def __init__(self):
@@ -28,6 +31,30 @@ class IncelsSQL:
         regex += r')'
 
         return regex
+
+    def __process_domain(self, domain, path):
+
+        if len(path) >= 2:
+                domain += '/' + path[1]
+
+        if len(path) >= 3:
+            domain += '/' + path[2]
+
+        if len(path) >= 4:
+            domain += '/' + path[3]
+
+        domain = domain.lower()
+        
+        if 'redd' in domain:
+            domain = domain.replace('redd.it', 'reddit.com')
+            domain = domain.replace('np.reddit', 'reddit')
+
+        if domain[-1] == ')':
+            domain = domain[:-1]
+        if domain[-2] == ')':
+            domain = domain[:-2]
+        
+        return domain
 
     def close_connection(self):
         self.cnx.close()
@@ -60,7 +87,7 @@ class IncelsSQL:
 
         return urls
 
-    def get_url_root(self):
+    def get_url_root(self): # Dont use this table
         cursor = self.cnx.cursor()
 
         query = ("SELECT url FROM url_statistics")
@@ -98,7 +125,7 @@ class IncelsSQL:
 
         for body in cursor:
             comment = body[0].decode('UTF-8')
-            
+
             found_urls = find_urls.findall(comment)
 
             for url in found_urls:
@@ -106,7 +133,7 @@ class IncelsSQL:
 
         return urls
 
-    def get_unique_urls_from_comments(self, urls):
+    def get_domains_from_comments(self, urls):
 
         unique_urls = {}
 
@@ -124,4 +151,28 @@ class IncelsSQL:
                 unique_urls[domain] = 1
 
         return dict(sorted(unique_urls.items(), key=lambda item: item[1], reverse=True))
-            
+    
+
+    def get_domains_path_from_comments(self, urls):
+
+        unique_urls = {}
+
+        for url in urls:
+            ext = tldextract.extract(url)
+
+            if ext.subdomain != '' and ext.subdomain != 'www':
+                domain = ext.subdomain + '.' + ext.domain + '.' + ext.suffix
+            else:
+                domain = ext.domain + '.' + ext.suffix
+
+            path = PurePosixPath(unquote(urlparse(url).path)).parts
+
+            domain = self.__process_domain(domain, path)
+
+            if domain in unique_urls:
+                unique_urls[domain] += 1
+            else:
+                unique_urls[domain] = 1
+
+        return dict(sorted(unique_urls.items(), key=lambda item: item[1], reverse=True))
+         

@@ -31,8 +31,12 @@ urls = connection.get_urls_from_comments()
 print('Number of urls: ', len(urls))
 print(urls[randint(0,len(urls))])
 
-unique_urls = connection.get_unique_urls_from_comments(urls)
-print(unique_urls)
+# unique_urls = connection.get_domains_from_comments(urls)
+unique_urls = connection.get_domains_path_from_comments(urls)
+# print(unique_urls)
+
+plot_dictionary(unique_urls, 1000, 1000000)
+plot_dictionary(unique_urls, 400, 1000)
 plot_dictionary(unique_urls, 200, 400)
 plot_dictionary(unique_urls, 100, 200)
 
