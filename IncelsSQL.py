@@ -5,6 +5,7 @@ import re
 from urllib.parse import urlparse, unquote
 import os
 from pathlib import PurePosixPath
+import numpy as np
 
 class IncelsSQL:
     def __init__(self):
@@ -62,6 +63,22 @@ class IncelsSQL:
     def get_comments(self):
         cursor = self.cnx.cursor()
 
+        query = ("SELECT * FROM comments")
+
+        cursor.execute(query)
+
+        comments = []
+
+        for comment in cursor:
+            c_id, c_auto_id, c_auto_link_id, c_link_id, c_body, c_parent_id, c_author, c_date = comment[:8]
+            print('----->',comment[:8])
+            #comments.append(body[0].decode('UTF-8'))
+
+        return comments
+
+    def get_body_comments(self):
+        cursor = self.cnx.cursor()
+
         query = ("SELECT body FROM comments")
 
         cursor.execute(query)
@@ -113,6 +130,27 @@ class IncelsSQL:
         return dict(sorted(urls.items(), key=lambda item: item[1], reverse=True))
 
 
+    def get_urls_from_links(self):
+        cursor = self.cnx.cursor()
+        query = ("SELECT self_text FROM links")
+        cursor.execute(query)
+
+        urls = []
+
+        regex = self.__get_url_regex()
+        find_urls = re.compile(regex, re.IGNORECASE)
+
+        for l in cursor:
+            if l[0] != None:
+                text = l[0].decode('UTF-8')
+
+                found_urls = find_urls.findall(text)
+
+                for url in found_urls:
+                    urls.append(url[0])
+
+        return urls
+
     def get_urls_from_comments(self):
         cursor = self.cnx.cursor()
         query = ("SELECT body FROM comments")
@@ -133,7 +171,7 @@ class IncelsSQL:
 
         return urls
 
-    def get_domains_from_comments(self, urls):
+    def get_domains(self, urls):
 
         unique_urls = {}
 
@@ -153,7 +191,7 @@ class IncelsSQL:
         return dict(sorted(unique_urls.items(), key=lambda item: item[1], reverse=True))
     
 
-    def get_domains_path_from_comments(self, urls):
+    def get_domains_path(self, urls):
 
         unique_urls = {}
 
@@ -175,4 +213,61 @@ class IncelsSQL:
                 unique_urls[domain] = 1
 
         return dict(sorted(unique_urls.items(), key=lambda item: item[1], reverse=True))
-         
+
+    def exists_table(self, t_name):
+
+        cursor = self.cnx.cursor()
+        cursor.execute("SHOW TABLES")
+
+        return t_name in [t[0] for t in cursor]
+
+    def save_urls(self, unique_urls, t_name = 'unique_urls'):
+
+        cursor = self.cnx.cursor()
+
+        if self.exists_table(t_name):
+            query = "DROP TABLE IF EXISTS " + t_name
+            cursor.execute(query) 
+
+        # Create table
+        query = ("CREATE TABLE " + t_name + " (id INT AUTO_INCREMENT PRIMARY KEY, url VARCHAR(700), n_occurrences INT DEFAULT 0, n_comments INT DEFAULT 0)")
+        cursor.execute(query)
+
+        for url, count in unique_urls.items():
+
+            if count >= 5:
+                query = "INSERT INTO " + t_name + " (url, n_occurrences) VALUES (%s, %s)"
+                values = (url, count)
+                cursor.execute(query, values)
+
+                self.cnx.commit()
+
+        print('All urls saved')
+
+    def get_unique_urls_from_links(self, n_occurrences = 0):
+        cursor = self.cnx.cursor()
+
+        query = ("SELECT url FROM unique_urls_from_links WHERE n_occurrences > " + str(n_occurrences))
+
+        cursor.execute(query)
+
+        for url in cursor:
+            print('----->', url[0])
+            unique_urls.append(url[0])
+
+        return unique_urls
+
+    def get_unique_urls_from_comments(self, n_occurrences = 0):
+        cursor = self.cnx.cursor()
+
+        query = ("SELECT url FROM unique_urls_from_comments WHERE n_occurrences > " + str(n_occurrences))
+
+        cursor.execute(query)
+
+        unique_urls = []
+
+        for url in cursor:
+            print('----->', url[0])
+            unique_urls.append(url[0])
+
+        return unique_urls
