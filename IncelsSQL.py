@@ -33,16 +33,15 @@ class IncelsSQL:
 
         return regex
 
-    def __process_domain(self, domain, path):
+    def __process_domain(self, domain, path = None):
 
-        if len(path) >= 2:
-                domain += '/' + path[1]
-
-        if len(path) >= 3:
-            domain += '/' + path[2]
-
-        if len(path) >= 4:
-            domain += '/' + path[3]
+        if path != None:
+            if len(path) >= 2:
+                    domain += '/' + path[1]
+            if len(path) >= 3:
+                domain += '/' + path[2]
+            if len(path) >= 4:
+                domain += '/' + path[3]
 
         domain = domain.lower()
         
@@ -50,6 +49,9 @@ class IncelsSQL:
             domain = domain.replace('redd.it', 'reddit.com')
             domain = domain.replace('np.reddit', 'reddit')
 
+        if 'youtu' in domain:
+            domain = domain.replace('youtu.be', 'youtube.com')
+        
         if domain[-1] == ')':
             domain = domain[:-1]
         if domain[-2] == ')':
@@ -89,6 +91,21 @@ class IncelsSQL:
             comments.append(body[0].decode('UTF-8'))
 
         return comments
+
+    def get_text_links(self):
+        cursor = self.cnx.cursor()
+
+        query = ("SELECT self_text FROM links")
+
+        cursor.execute(query)
+
+        t_list = []
+
+        for text in cursor:
+            if text[0] != None:
+                t_list.append(text[0].decode('UTF-8'))
+
+        return t_list
 
     def get_urls_statistics(self):
         cursor = self.cnx.cursor()
@@ -179,9 +196,11 @@ class IncelsSQL:
             ext = tldextract.extract(url)
 
             if ext.subdomain != '' and ext.subdomain != 'www':
-                domain = ext.subdomain + '.' + ext.domain
+                domain = ext.subdomain + '.' + ext.domain + '.' + ext.suffix
             else:
-                domain = ext.domain
+                domain = ext.domain + '.' + ext.suffix
+
+            domain = self.__process_domain(domain)
 
             if domain in unique_urls:
                 unique_urls[domain] += 1
@@ -251,8 +270,9 @@ class IncelsSQL:
 
         cursor.execute(query)
 
+        unique_urls = []
+
         for url in cursor:
-            print('----->', url[0])
             unique_urls.append(url[0])
 
         return unique_urls
@@ -267,7 +287,6 @@ class IncelsSQL:
         unique_urls = []
 
         for url in cursor:
-            print('----->', url[0])
             unique_urls.append(url[0])
 
         return unique_urls

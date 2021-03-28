@@ -13,12 +13,28 @@ def plot_dictionary(dictionary, min, max):
     plt.xticks(range(len(d)), list(d.keys()), rotation='vertical')
     plt.show()
 
+def process_comment(c):
+    c = c.lower()
+        
+    if 'redd' in c:
+        c = c.replace('redd.it', 'reddit.com')
+        c = c.replace('np.reddit', 'reddit')
+
+    if 'youtu' in c:
+        c = c.replace('youtu.be', 'youtube.com')
+
+    return c
+
 def get_comments_with_url(url, comments):
-    return [c for c in comments if url in c.lower()]
+    return [c for c in comments if url in process_comment(c)]
 
 def plot_word_cloud(text, file_name='word_cloud', folder='comments'):
     file_name = file_name.replace('/', '_').replace('.', '_') + '.png'
-    wordcloud = WordCloud(width=800, height=400, stopwords=STOPWORDS, background_color='white').generate(text)
+
+    stopwords = set(STOPWORDS)
+    stopwords.update(['https', 'http', 'www'])
+
+    wordcloud = WordCloud(width=800, height=400, stopwords=stopwords, background_color='white').generate(text)
     wordcloud.to_file('img/word_clouds/' + folder + '/' + file_name)
 
     # plt.imshow(wordcloud, interpolation='bilinear')
@@ -27,26 +43,63 @@ def plot_word_cloud(text, file_name='word_cloud', folder='comments'):
 
     return
 
-# plot_word_cloud(' '.join(['dog dog dog', 'cat cat cat cat is is is is is is is ']))
-connection = IncelsSQL()
+def save_unique_urls_comments(connection):
+    
+    urls = connection.get_urls_from_comments()
+    unique_urls = connection.get_domains_path(urls)
 
-# connection.save_urls(unique_urls, t_name='unique_urls_from_comments')
+    # plot_dictionary(unique_urls, 1000, 1000000)
+    # plot_dictionary(unique_urls, 400, 1000)
+    # plot_dictionary(unique_urls, 200, 400)
+    # plot_dictionary(unique_urls, 100, 200)
 
-urls = connection.get_unique_urls_from_comments(n_occurrences=100)
-comments = connection.get_body_comments()
+    connection.save_urls(unique_urls, t_name='unique_urls_from_comments')
 
-for u in urls:
-    comments_with_url = get_comments_with_url(u, comments)
+def save_unique_urls_links(connection):
+    
+    urls = connection.get_urls_from_links()
+    unique_urls = connection.get_domains(urls)
 
-    if len(comments_with_url) == 0:
-        print('url defectuosa: ', u)
-    else:
-        plot_word_cloud(' '.join(comments_with_url), u)
+    # plot_dictionary(unique_urls, 50, 1000000)
 
-# plot_dictionary(unique_urls, 1000, 1000000)
-# plot_dictionary(unique_urls, 400, 1000)
-# plot_dictionary(unique_urls, 200, 400)
-# plot_dictionary(unique_urls, 100, 200)
-# plot_dictionary(unique_urls, 50, 1000000)
+    connection.save_urls(unique_urls, t_name='unique_urls_from_links')
 
-connection.close_connection()
+def get_word_clouds_comments(connection):
+    urls = connection.get_unique_urls_from_comments(n_occurrences=100)
+    comments = connection.get_body_comments()
+
+    for u in urls:
+        comments_with_url = get_comments_with_url(u, comments)
+
+        if len(comments_with_url) == 0:
+            print('url defectuosa: ', u)
+        else:
+            plot_word_cloud(' '.join(comments_with_url), u)
+
+def get_word_clouds_links(connection):
+
+    urls = connection.get_unique_urls_from_links(n_occurrences=50)
+    text_links = connection.get_text_links()
+
+    for u in urls:
+        comments_with_url = get_comments_with_url(u, text_links)
+
+        if len(comments_with_url) == 0:
+            print('url defectuosa: ', u)
+        else:
+            plot_word_cloud(' '.join(comments_with_url), u, folder='links')
+
+# MAIN
+if __name__ == "__main__":
+    connection = IncelsSQL()
+
+    # print('Saving unique urls from comments...')
+    # save_unique_urls_comments(connection)
+    # print('Saving unique urls from links...')
+    # save_unique_urls_links(connection)
+    print('Saving word clouds from comments...')
+    get_word_clouds_comments(connection)
+    print('Saving word clouds from links...')
+    get_word_clouds_links(connection)
+
+    connection.close_connection()
