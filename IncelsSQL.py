@@ -43,14 +43,7 @@ class IncelsSQL:
             if len(path) >= 4:
                 domain += '/' + path[3]
 
-        domain = domain.lower()
-        
-        if 'redd' in domain:
-            domain = domain.replace('redd.it', 'reddit.com')
-            domain = domain.replace('np.reddit', 'reddit')
-
-        if 'youtu' in domain:
-            domain = domain.replace('youtu.be', 'youtube.com')
+        domain = self.__process_text(domain)
         
         if domain[-1] == ')':
             domain = domain[:-1]
@@ -58,6 +51,19 @@ class IncelsSQL:
             domain = domain[:-2]
         
         return domain
+
+    def __process_text(self, text):
+
+        text = text.lower()
+        
+        if 'redd' in text:
+            text = text.replace('redd.it', 'reddit.com')
+            text = text.replace('np.reddit', 'reddit')
+
+        if 'youtu' in text:
+            text = text.replace('youtu.be', 'youtube.com')
+
+        return text
 
     def close_connection(self):
         self.cnx.close()
@@ -263,30 +269,79 @@ class IncelsSQL:
 
         print('All urls saved')
 
-    def get_unique_urls_from_links(self, n_occurrences = 0):
+    def get_unique_urls_from_links(self, n_occurrences = 0, return_id = False):
         cursor = self.cnx.cursor()
 
-        query = ("SELECT url FROM unique_urls_from_links WHERE n_occurrences > " + str(n_occurrences))
-
-        cursor.execute(query)
-
-        unique_urls = []
-
-        for url in cursor:
-            unique_urls.append(url[0])
-
-        return unique_urls
+        if return_id == False:
+            query = ("SELECT url FROM unique_urls_from_links WHERE n_occurrences > " + str(n_occurrences))
+            cursor.execute(query)
+            return [url[0] for url in cursor]
+        else:
+            query = ("SELECT id, url FROM unique_urls_from_links  WHERE n_occurrences > " + str(n_occurrences))
+            cursor.execute(query)
+            return {u[0]:u[1] for u in cursor}
 
     def get_unique_urls_from_comments(self, n_occurrences = 0):
         cursor = self.cnx.cursor()
 
         query = ("SELECT url FROM unique_urls_from_comments WHERE n_occurrences > " + str(n_occurrences))
-
         cursor.execute(query)
 
-        unique_urls = []
+        return [url[0] for url in cursor]
 
-        for url in cursor:
-            unique_urls.append(url[0])
+    # Creates a many-to-many table that links unique_urls_from_links with links 
+    def save_links_ids_with_url(self, t_name = 'urls_links_ids'):
 
-        return unique_urls
+        cursor = self.cnx.cursor()
+
+        if self.exists_table(t_name):
+            query = "DROP TABLE IF EXISTS " + t_name
+            cursor.execute(query)
+
+        query = ("SELECT id, url FROM unique_urls_from_links")
+        cursor.execute(query)
+        unique_urls = {u[0]:u[1] for u in cursor}
+
+        query = ("SELECT id, self_text FROM links")
+        cursor.execute(query)
+        links = {l[0]:l[1] for l in cursor}
+
+        query = "CREATE TABLE " + t_name + " (url_from_links_id INT, link_id VARCHAR(20))"
+        cursor.execute(query)
+
+        for url_id, unique_url in unique_urls.items():
+            for link_id, link_body in links.items():
+
+                if link_body != None and unique_url in self.__process_text(str(link_body)):
+                    query = ("INSERT INTO " + t_name + " (url_from_links_id, link_id) VALUES (%s, %s)")
+                    values = (url_id, link_id)
+                    cursor.execute(query, values)
+
+                    self.cnx.commit()
+                    
+        print('Table ' + t_name + ' created successfully.')
+
+    def get_links_ids_with_url(self, u_id):
+
+        cursor = self.cnx.cursor()
+
+        query = ("SELECT link_id FROM urls_links_ids WHERE url_from_links_id = %s")
+        values = (u_id,)
+        cursor.execute(query, values)
+
+        link_ids = [l_id[0] for l_id in cursor]
+        
+        return link_ids
+
+    def get_comments_from_link(self, id):
+
+        cursor = self.cnx.cursor()
+
+        query = ("SELECT body FROM comments WHERE link_id = %s") # high computational time (5-10 secs)
+        values = (id,)
+        cursor.execute(query, values)
+
+        comments = [c[0].decode('UTF-8') for c in cursor]
+     
+        return comments
+

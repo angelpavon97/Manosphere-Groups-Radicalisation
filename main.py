@@ -89,17 +89,42 @@ def get_word_clouds_links(connection):
         else:
             plot_word_cloud(' '.join(comments_with_url), u, folder='links')
 
+def get_word_clouds_links_comments(connection):
+
+    unique_urls = connection.get_unique_urls_from_links(n_occurrences=20, return_id=True)
+    unique_urls = {k: v for k, v in sorted(unique_urls.items(), key=lambda item: item[0], reverse=True)}
+    print(unique_urls)
+
+    for u_id, url in unique_urls.items():
+        ids = connection.get_links_ids_with_url(u_id)
+        comments = []
+
+        print(u_id, url)
+        for count, i in enumerate(ids):
+            print('\t', count+1, '/', len(ids))
+            comments = comments + connection.get_comments_from_link(i)
+
+        print('\turl id: ', u_id, ' url: ', url, ' Number of comments: ', len(comments))
+
+        if(len(comments) > 0):
+            plot_word_cloud(' '.join(comments), url, folder='links_comments')
+
 # MAIN
 if __name__ == "__main__":
     connection = IncelsSQL()
 
-    # print('Saving unique urls from comments...')
-    # save_unique_urls_comments(connection)
-    # print('Saving unique urls from links...')
-    # save_unique_urls_links(connection)
+    print('Saving unique urls from comments...')
+    save_unique_urls_comments(connection)
+    print('Saving unique urls from links...')
+    save_unique_urls_links(connection)
     print('Saving word clouds from comments...')
     get_word_clouds_comments(connection)
     print('Saving word clouds from links...')
     get_word_clouds_links(connection)
+
+    print('Saving relation between links and unique urls...')
+    connection.save_links_ids_with_url()
+    print('Saving word clouds from links comments...')
+    get_word_clouds_links_comments(connection)
 
     connection.close_connection()
