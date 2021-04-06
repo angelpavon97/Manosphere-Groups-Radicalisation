@@ -345,3 +345,48 @@ class IncelsSQL:
      
         return comments
 
+    def get_n_comments_from_link(self, id):
+        cursor = self.cnx.cursor()
+
+        query = ("SELECT COUNT(*) FROM comments WHERE link_id = %s")
+        values = (id,)
+        cursor.execute(query, values)
+     
+        return sum([c[0] for c in cursor])
+
+    def update_n_comments(self, u_id, n_comments):
+        cursor = self.cnx.cursor()
+
+        query = ("UPDATE unique_urls_from_links SET n_comments = %s WHERE id = %s")
+        values = (n_comments, u_id)
+
+        cursor.execute(query, values)
+        self.cnx.commit()
+
+    def save_number_comments(self): # Save the n_comments in unique_urls_from_links
+
+        cursor = self.cnx.cursor()
+
+        unique_urls = self.get_unique_urls_from_links(n_occurrences=0, return_id=True)
+        unique_urls = {k: v for k, v in sorted(unique_urls.items(), key=lambda item: item[0], reverse=True)}
+
+        for u_id, url in unique_urls.items():
+            ids = self.get_links_ids_with_url(u_id)
+
+            n_comments = 0
+
+            for count, i in enumerate(ids):
+                print('\t', count+1, '/', len(ids))
+                n_comments += self.get_n_comments_from_link(i)
+
+            print('\turl id: ', u_id, ' url: ', url, ' Number of comments: ', n_comments)
+            self.update_n_comments(u_id, n_comments)
+
+
+    def get_most_commented_urls(self):
+        cursor = self.cnx.cursor()
+
+        query = ("SELECT url, n_comments FROM unique_urls_from_links")
+        cursor.execute(query)
+        most_commented_urls = {c[0]:c[1] for c in cursor}
+        return dict(sorted(most_commented_urls.items(), key=lambda item: item[1], reverse=True))

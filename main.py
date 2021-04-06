@@ -2,6 +2,7 @@ from IncelsSQL import IncelsSQL
 from random import randint
 import matplotlib.pyplot as plt
 from wordcloud import WordCloud, STOPWORDS, ImageColorGenerator
+import numpy as np
 
 def reduce_dictionary(dictionary, min = 200, max = 400):
     return {k:dictionary[k] for k in dictionary if dictionary[k] > min and dictionary[k] <= max}
@@ -9,7 +10,7 @@ def reduce_dictionary(dictionary, min = 200, max = 400):
 def plot_dictionary(dictionary, min, max):
     d = reduce_dictionary(dictionary, min, max)
 
-    plt.bar(range(len(d)), list(d.values()), align='center', color = 'orange')
+    plt.bar(range(len(d)), list(d.values()), align='center', color = 'green')
     plt.xticks(range(len(d)), list(d.keys()), rotation='vertical')
     plt.show()
 
@@ -127,4 +128,9 @@ if __name__ == "__main__":
     print('Saving word clouds from links comments...')
     get_word_clouds_links_comments(connection)
 
+    print('Saving number of comments...')
+    connection.save_number_comments()
+    print('Showing most commented urls...')
+    plot_dictionary(connection.get_most_commented_urls(), 500, 1000)
+    
     connection.close_connection()
