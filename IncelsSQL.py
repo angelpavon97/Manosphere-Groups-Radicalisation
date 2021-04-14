@@ -281,6 +281,18 @@ class IncelsSQL:
             cursor.execute(query)
             return {u[0]:u[1] for u in cursor}
 
+    def get_unique_paths_from_links(self, n_occurrences = 0, return_id = False):
+        cursor = self.cnx.cursor()
+
+        if return_id == False:
+            query = ("SELECT url FROM unique_paths_from_links WHERE n_occurrences > " + str(n_occurrences))
+            cursor.execute(query)
+            return [url[0] for url in cursor]
+        else:
+            query = ("SELECT id, url FROM unique_paths_from_links  WHERE n_occurrences > " + str(n_occurrences))
+            cursor.execute(query)
+            return {u[0]:u[1] for u in cursor}
+
     def get_unique_urls_from_comments(self, n_occurrences = 0):
         cursor = self.cnx.cursor()
 
@@ -290,7 +302,7 @@ class IncelsSQL:
         return [url[0] for url in cursor]
 
     # Creates a many-to-many table that links unique_urls_from_links with links 
-    def save_links_ids_with_url(self, t_name = 'urls_links_ids'):
+    def save_links_ids_with_url(self, t_name = 'urls_links_ids', paths = False):
 
         cursor = self.cnx.cursor()
 
@@ -298,15 +310,18 @@ class IncelsSQL:
             query = "DROP TABLE IF EXISTS " + t_name
             cursor.execute(query)
 
-        query = ("SELECT id, url FROM unique_urls_from_links")
+        if paths == False:
+            query = ("SELECT id, url FROM unique_urls_from_links")
+        else:
+            query = ("SELECT id, url FROM unique_paths_from_links")
+
         cursor.execute(query)
         unique_urls = {u[0]:u[1] for u in cursor}
 
         query = ("SELECT id, self_text FROM links")
         cursor.execute(query)
         links = {l[0]:l[1] for l in cursor}
-
-        query = "CREATE TABLE " + t_name + " (url_from_links_id INT, link_id VARCHAR(20))"
+        query = "CREATE TABLE " + t_name + " (url_from_links_id INT, link_id VARCHAR(60))"
         cursor.execute(query)
 
         for url_id, unique_url in unique_urls.items():
@@ -321,11 +336,15 @@ class IncelsSQL:
                     
         print('Table ' + t_name + ' created successfully.')
 
-    def get_links_ids_with_url(self, u_id):
+    def get_links_ids_with_url(self, u_id, paths=False):
 
         cursor = self.cnx.cursor()
 
-        query = ("SELECT link_id FROM urls_links_ids WHERE url_from_links_id = %s")
+        if paths == False:
+            query = ("SELECT link_id FROM urls_links_ids WHERE url_from_links_id = %s")
+        else:
+            query = ("SELECT link_id FROM paths_links_ids WHERE url_from_links_id = %s")
+            
         values = (u_id,)
         cursor.execute(query, values)
 
@@ -354,24 +373,32 @@ class IncelsSQL:
      
         return sum([c[0] for c in cursor])
 
-    def update_n_comments(self, u_id, n_comments):
+    def update_n_comments(self, u_id, n_comments, paths=False):
         cursor = self.cnx.cursor()
 
-        query = ("UPDATE unique_urls_from_links SET n_comments = %s WHERE id = %s")
+        if paths == False:
+            query = ("UPDATE unique_urls_from_links SET n_comments = %s WHERE id = %s")
+        else:
+            query = ("UPDATE unique_paths_from_links SET n_comments = %s WHERE id = %s")
+
         values = (n_comments, u_id)
 
         cursor.execute(query, values)
         self.cnx.commit()
 
-    def save_number_comments(self): # Save the n_comments in unique_urls_from_links
+    def save_number_comments(self, paths=False): # Save the n_comments in unique_urls_from_links
 
         cursor = self.cnx.cursor()
 
-        unique_urls = self.get_unique_urls_from_links(n_occurrences=0, return_id=True)
+        if paths == False:
+            unique_urls = self.get_unique_urls_from_links(n_occurrences=0, return_id=True)
+        else:
+            unique_urls = self.get_unique_paths_from_links(n_occurrences=0, return_id=True)
+
         unique_urls = {k: v for k, v in sorted(unique_urls.items(), key=lambda item: item[0], reverse=True)}
 
         for u_id, url in unique_urls.items():
-            ids = self.get_links_ids_with_url(u_id)
+            ids = self.get_links_ids_with_url(u_id, paths=paths)
 
             n_comments = 0
 
@@ -387,6 +414,14 @@ class IncelsSQL:
         cursor = self.cnx.cursor()
 
         query = ("SELECT url, n_comments FROM unique_urls_from_links")
+        cursor.execute(query)
+        most_commented_urls = {c[0]:c[1] for c in cursor}
+        return dict(sorted(most_commented_urls.items(), key=lambda item: item[1], reverse=True))
+
+    def get_most_commented_paths(self):
+        cursor = self.cnx.cursor()
+
+        query = ("SELECT url, n_comments FROM unique_paths_from_links")
         cursor.execute(query)
         most_commented_urls = {c[0]:c[1] for c in cursor}
         return dict(sorted(most_commented_urls.items(), key=lambda item: item[1], reverse=True))

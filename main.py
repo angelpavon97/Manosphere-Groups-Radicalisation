@@ -56,14 +56,18 @@ def save_unique_urls_comments(connection):
 
     connection.save_urls(unique_urls, t_name='unique_urls_from_comments')
 
-def save_unique_urls_links(connection):
+def save_unique_urls_links(connection, paths=False):
     
     urls = connection.get_urls_from_links()
-    unique_urls = connection.get_domains(urls)
 
-    # plot_dictionary(unique_urls, 50, 1000000)
-
-    connection.save_urls(unique_urls, t_name='unique_urls_from_links')
+    if paths == False:
+        unique_urls = connection.get_domains(urls)
+        connection.save_urls(unique_urls, t_name='unique_urls_from_links')
+    else:
+        unique_urls = connection.get_domains_path(urls)
+        connection.save_urls(unique_urls, t_name='unique_paths_from_links')
+        
+    # plot_dictionary(unique_urls, 5, 10) 
 
 def get_word_clouds_comments(connection):
     urls = connection.get_unique_urls_from_comments(n_occurrences=100)
@@ -90,14 +94,18 @@ def get_word_clouds_links(connection):
         else:
             plot_word_cloud(' '.join(comments_with_url), u, folder='links')
 
-def get_word_clouds_links_comments(connection):
+def get_word_clouds_links_comments(connection, paths=False):
 
-    unique_urls = connection.get_unique_urls_from_links(n_occurrences=20, return_id=True)
+    if paths == False:
+        unique_urls = connection.get_unique_urls_from_links(n_occurrences=10, return_id=True)
+    else:
+        unique_urls = connection.get_unique_paths_from_links(n_occurrences=5, return_id=True)
+
     unique_urls = {k: v for k, v in sorted(unique_urls.items(), key=lambda item: item[0], reverse=True)}
     print(unique_urls)
 
     for u_id, url in unique_urls.items():
-        ids = connection.get_links_ids_with_url(u_id)
+        ids = connection.get_links_ids_with_url(u_id, paths=paths)
         comments = []
 
         print(u_id, url)
@@ -106,31 +114,37 @@ def get_word_clouds_links_comments(connection):
             comments = comments + connection.get_comments_from_link(i)
 
         print('\turl id: ', u_id, ' url: ', url, ' Number of comments: ', len(comments))
+        connection.update_n_comments(u_id, len(comments), paths=paths)
 
         if(len(comments) > 0):
-            plot_word_cloud(' '.join(comments), url, folder='links_comments')
+            if paths==False:
+                plot_word_cloud(' '.join(comments), url, folder='links_comments')
+            else:
+                plot_word_cloud(' '.join(comments), url, folder='links_comments_p')
 
 # MAIN
 if __name__ == "__main__":
     connection = IncelsSQL()
 
-    print('Saving unique urls from comments...')
-    save_unique_urls_comments(connection)
-    print('Saving unique urls from links...')
-    save_unique_urls_links(connection)
-    print('Saving word clouds from comments...')
-    get_word_clouds_comments(connection)
-    print('Saving word clouds from links...')
-    get_word_clouds_links(connection)
+    # print('Saving unique urls from comments...')
+    # save_unique_urls_comments(connection)
+    # print('Saving unique urls from links...')
+    # save_unique_urls_links(connection, paths=True)
 
-    print('Saving relation between links and unique urls...')
-    connection.save_links_ids_with_url()
-    print('Saving word clouds from links comments...')
-    get_word_clouds_links_comments(connection)
+    # print('Saving word clouds from comments...')
+    # get_word_clouds_comments(connection)
+    # print('Saving word clouds from links...')
+    # get_word_clouds_links(connection)
 
-    print('Saving number of comments...')
-    connection.save_number_comments()
-    print('Showing most commented urls...')
-    plot_dictionary(connection.get_most_commented_urls(), 500, 1000)
+    # print('Saving relation between links and unique paths...')
+    # connection.save_links_ids_with_url(t_name='paths_links_ids', paths=True)
+    # print('Saving word clouds from links comments...')
+    # get_word_clouds_links_comments(connection, paths=True)
+
+    # print('Saving number of comments...')
+    # connection.save_number_comments(paths=True)
+
+    print('Showing most commented paths...')
+    plot_dictionary(connection.get_most_commented_paths(), 200, 1000)
     
     connection.close_connection()
