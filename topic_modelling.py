@@ -85,6 +85,10 @@ def get_df_example():
 
     return df
 
+def get_df():
+    # SELECT u.url, c.u_id FROM unique_urls_from_links u INNER JOIN comments_from_url c ON u.id = c.u_id;
+    return
+
 def get_document_term_matrix(df, cv):
     print(df)
     data_cv = cv.fit_transform(df.comments)
@@ -93,10 +97,17 @@ def get_document_term_matrix(df, cv):
 
     return dt_matrix
 
-def apply_lda(corpus, id2word, num_topics):
+def apply_lda(corpus, id2word, num_topics, passes, save_model = True):
 
     # LDA
-    lda = models.LdaModel(corpus=corpus, num_topics=num_topics, id2word=id2word, passes=80)
+    lda = models.LdaModel(corpus=corpus, num_topics=num_topics, id2word=id2word, passes=passes)
+
+    # Save model
+    if save_model == True:
+        file_name = 'lda_' + str(num_topics) + '_topics_' + str(passes) + '_passes.sav'
+        pickle.dump(lda, open('./topic_modeling/models/' + file_name, 'wb'))
+
+    # Get topics
     topics = lda.print_topics()
 
     # Assigned topics
@@ -106,7 +117,7 @@ def apply_lda(corpus, id2word, num_topics):
     return topics, assigned_topics
 
 
-def get_topics(df, dt_matrix, num_topics = 4):
+def get_topics(df, dt_matrix, num_topics = 4, passes = 10):
 
     # Create the gensim corpus
     corpus = matutils.Sparse2Corpus(scipy.sparse.csr_matrix(dt_matrix.transpose()))
@@ -115,9 +126,23 @@ def get_topics(df, dt_matrix, num_topics = 4):
     id2word = dict((v, k) for k, v in cv.vocabulary_.items())
 
     # Apply LDA
-    topics, assigned_topics = apply_lda(corpus, id2word, num_topics)
+    topics, assigned_topics = apply_lda(corpus, id2word, num_topics, passes)
 
     return topics, assigned_topics
+
+def save_topics(file_name, topics, assigned_topics):
+    f = open('./topic_modeling/topics/' + file_name, 'w')
+
+    f.write('OBTAINED TOPICS:\n\n')
+    for t in topics:
+        f.write(str(t[0]) + '\t\t' + t[1] + '\n')
+
+    f.write('\nASSIGNED TOPICS:\n\n')
+    for a in assigned_topics:
+        f.write(a[1] + '\t\t' + str(a[0]) + '\n')
+
+    print('Topics saved successfully.')
+    f.close()
 
 # MAIN
 if __name__ == "__main__":
@@ -136,9 +161,10 @@ if __name__ == "__main__":
     dt_matrix = get_document_term_matrix(processed_comments, cv)
 
     # Get topics
-    topics, assigned_topics = get_topics(df, dt_matrix, num_topics=4)
+    n_topics = 4
+    passes = 80
+    topics, assigned_topics = get_topics(df, dt_matrix, num_topics=n_topics, passes=passes)
 
-    for t in topics:
-        print(t[0], '---->', t[1])
-
-    print(assigned_topics)
+    # Save topics
+    file_name = 'example_' + str(n_topics) + '_topics.txt'
+    save_topics(file_name, topics, assigned_topics)

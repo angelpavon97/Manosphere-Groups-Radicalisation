@@ -1,0 +1,14 @@
+OBTAINED TOPICS:
+
+0		0.046*"facebook" + 0.037*"student" + 0.028*"univers" + 0.020*"servic" + 0.020*"american" + 0.020*"social" + 0.020*"membership" + 0.020*"harvard" + 0.011*"compani" + 0.011*"media"
+1		0.048*"user" + 0.048*"tweet" + 0.037*"twitter" + 0.026*"servic" + 0.014*"softwar" + 0.014*"non" + 0.014*"world" + 0.014*"audio" + 0.014*"second" + 0.014*"american"
+2		0.006*"servic" + 0.006*"american" + 0.006*"softwar" + 0.006*"facebook" + 0.006*"compani" + 0.006*"non" + 0.006*"rel" + 0.006*"llc" + 0.006*"comput" + 0.006*"microsoft"
+3		0.057*"video" + 0.026*"websit" + 0.020*"content" + 0.020*"most" + 0.020*"onlin" + 0.014*"short" + 0.014*"clip" + 0.014*"youtub" + 0.014*"upload" + 0.014*"visit"
+
+ASSIGNED TOPICS:
+
+google.es		3
+youtube.com		3
+twitter.com		1
+wikipedia.com		3
+facebook.com		0
