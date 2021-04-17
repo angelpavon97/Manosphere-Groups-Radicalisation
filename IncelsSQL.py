@@ -425,3 +425,45 @@ class IncelsSQL:
         cursor.execute(query)
         most_commented_urls = {c[0]:c[1] for c in cursor}
         return dict(sorted(most_commented_urls.items(), key=lambda item: item[1], reverse=True))
+
+    def save_comments(self, u_id, comments, t_name = 'comments_from_url'):
+        cursor = self.cnx.cursor()
+
+        query = ("INSERT INTO " + t_name + " (u_id, comments) VALUES (%s, %s)")
+        values = (u_id, comments)
+        cursor.execute(query, values)
+
+        self.cnx.commit()
+
+    def save_comments_urls(self, t_name = 'comments_from_url', paths = False):
+        cursor = self.cnx.cursor()
+
+        if self.exists_table(t_name):
+            query = "DROP TABLE IF EXISTS " + t_name
+            cursor.execute(query)
+
+        # Create table
+        query = ("CREATE TABLE " + t_name + " (u_id INT PRIMARY KEY, comments LONGTEXT)")
+        cursor.execute(query)
+
+        if paths == False:
+            unique_urls = self.get_unique_urls_from_links(n_occurrences=10, return_id=True)
+        else:
+            unique_urls = self.get_unique_paths_from_links(n_occurrences=5, return_id=True)
+
+        unique_urls = {k: v for k, v in sorted(unique_urls.items(), key=lambda item: item[0], reverse=True)}
+        print(unique_urls)
+
+        for u_id, url in unique_urls.items():
+            ids = self.get_links_ids_with_url(u_id, paths=paths)
+            comments = []
+
+            print(u_id, url)
+            for count, i in enumerate(ids):
+                print('\t', count+1, '/', len(ids))
+                comments = comments + self.get_comments_from_link(i)
+
+            print('\turl id: ', u_id, ' url: ', url, ' Number of comments: ', len(comments))
+            self.save_comments(u_id, ' '.join(comments), t_name)
+
+    
