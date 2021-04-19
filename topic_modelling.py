@@ -1,3 +1,5 @@
+from IncelsSQL import IncelsSQL
+
 import pandas as pd
 import re
 from nltk.corpus import stopwords
@@ -86,11 +88,15 @@ def get_df_example():
     return df
 
 def get_df():
-    # SELECT u.url, c.u_id FROM unique_urls_from_links u INNER JOIN comments_from_url c ON u.id = c.u_id;
-    return
+
+    connection = IncelsSQL()
+    data_dict = connection.get_comments_from_url_table()
+    df = pd.DataFrame(data_dict.items(), columns=['urls', 'comments'])
+
+    return df
 
 def get_document_term_matrix(df, cv):
-    print(df)
+
     data_cv = cv.fit_transform(df.comments)
     dt_matrix = pd.DataFrame(data_cv.toarray(), columns=cv.get_feature_names())
     dt_matrix.index = df.index
@@ -112,7 +118,12 @@ def apply_lda(corpus, id2word, num_topics, passes, save_model = True):
 
     # Assigned topics
     corpus_transformed = lda[corpus]
-    assigned_topics = list(zip([a for [(a,b)] in corpus_transformed], dt_matrix.index))
+
+    assigned_topics = []
+    for c in corpus_transformed:        
+        assigned_topics.append(sorted(c, key=lambda tup: tup[1], reverse=True)) # Get topics and percentages
+
+    assigned_topics = list(zip(assigned_topics, dt_matrix.index)) # Join urls with their topics
 
     return topics, assigned_topics
 
@@ -135,11 +146,11 @@ def save_topics(file_name, topics, assigned_topics):
 
     f.write('OBTAINED TOPICS:\n\n')
     for t in topics:
-        f.write(str(t[0]) + '\t\t' + t[1] + '\n')
+        f.write(str(t[0]) + '\t\t' + str(t[1]) + '\n')
 
     f.write('\nASSIGNED TOPICS:\n\n')
     for a in assigned_topics:
-        f.write(a[1] + '\t\t' + str(a[0]) + '\n')
+        f.write(str(a[1]) + '\t\t\t' + str(a[0]) + '\n')
 
     print('Topics saved successfully.')
     f.close()
@@ -148,23 +159,34 @@ def save_topics(file_name, topics, assigned_topics):
 if __name__ == "__main__":
 
     # Get data
-    df = get_df_example()
+    print('Getting data...')
+    df = get_df()
+    print(df)
 
     # Process comments
+    print('Processing comments...')
     processed_comments = pd.DataFrame(df.comments.apply(process_text))
     processed_comments.index = df.urls
 
     # Counter vectorizer model
+    print('Creating counter vectorizer model...')
     cv = CountVectorizer(max_df=.8)
 
     # Get document term matrix
+    print('Getting document term matrix...')
     dt_matrix = get_document_term_matrix(processed_comments, cv)
 
     # Get topics
-    n_topics = 4
-    passes = 80
-    topics, assigned_topics = get_topics(df, dt_matrix, num_topics=n_topics, passes=passes)
+    n_topics = [9, 10, 11, 12]
+    passes = [500, 1000]
 
-    # Save topics
-    file_name = 'example_' + str(n_topics) + '_topics.txt'
-    save_topics(file_name, topics, assigned_topics)
+    for n in n_topics:
+        for p in passes:
+            # Get assigned topics
+            print('Getting ' + str(n) + ' topics with ' + str(p) + ' passes...')
+            topics, assigned_topics = get_topics(df, dt_matrix, num_topics=n, passes=p)
+
+            # Save topics
+            print('Saving ' + str(n) + ' topics with ' + str(p) + ' passes...')
+            file_name = 'incelsURLS_' + str(n) + '_topics_' + str(p) + '_passes.txt'
+            save_topics(file_name, topics, assigned_topics)

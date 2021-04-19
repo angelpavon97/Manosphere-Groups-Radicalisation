@@ -466,4 +466,13 @@ class IncelsSQL:
             print('\turl id: ', u_id, ' url: ', url, ' Number of comments: ', len(comments))
             self.save_comments(u_id, ' '.join(comments), t_name)
 
+
+    def get_comments_from_url_table(self, t_name = 'comments_from_url', return_url = True):
+
+        cursor = self.cnx.cursor()
+
+        query = ("SELECT u.url, c.comments FROM unique_urls_from_links u INNER JOIN comments_from_url c ON u.id = c.u_id")
+        cursor.execute(query)
+
+        return {c[0]:c[1] for c in cursor}
     
