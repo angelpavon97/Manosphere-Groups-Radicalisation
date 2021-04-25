@@ -57,7 +57,7 @@ def process_text(text):
 
     # Stop words
     stop_words = stopwords.words('english')
-    stop_words.extend(['https', 'http', 'www'])
+    stop_words.extend(['https', 'http', 'www', 'html', 'get_simple'])
 
     # Removing stop words and keeping adj and nouns
     nouns_adj = [word for (word, pos) in pos_tag(tokenized) if is_noun_or_adj(pos) and word not in stop_words]
@@ -87,10 +87,14 @@ def get_df_example():
 
     return df
 
-def get_df():
+def get_df(paths=False):
 
     connection = IncelsSQL()
-    data_dict = connection.get_comments_from_url_table()
+    if paths == False:
+        data_dict = connection.get_comments_from_url_table()
+    else:
+        data_dict = connection.get_comments_from_path_table()
+
     df = pd.DataFrame(data_dict.items(), columns=['urls', 'comments'])
 
     return df
@@ -158,9 +162,13 @@ def save_topics(file_name, topics, assigned_topics):
 # MAIN
 if __name__ == "__main__":
 
+    # Set paths
+    paths = True
+
     # Get data
     print('Getting data...')
-    df = get_df()
+    df = get_df(paths)
+    # df = df.drop([0, 1])
     print(df)
 
     # Process comments
@@ -177,8 +185,8 @@ if __name__ == "__main__":
     dt_matrix = get_document_term_matrix(processed_comments, cv)
 
     # Get topics
-    n_topics = [9, 10, 11, 12]
-    passes = [500, 1000]
+    n_topics = [8, 9, 10, 11, 12]
+    passes = [100, 500]
 
     for n in n_topics:
         for p in passes:
@@ -188,5 +196,9 @@ if __name__ == "__main__":
 
             # Save topics
             print('Saving ' + str(n) + ' topics with ' + str(p) + ' passes...')
-            file_name = 'incelsURLS_' + str(n) + '_topics_' + str(p) + '_passes.txt'
+            if paths == True:
+                file_name = 'incelsPaths_' + str(n) + '_topics_' + str(p) + '_passes.txt'
+            else:
+                file_name = 'incelsURLS_' + str(n) + '_topics_' + str(p) + '_passes.txt'
+
             save_topics(file_name, topics, assigned_topics)

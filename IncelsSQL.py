@@ -467,11 +467,20 @@ class IncelsSQL:
             self.save_comments(u_id, ' '.join(comments), t_name)
 
 
-    def get_comments_from_url_table(self, t_name = 'comments_from_url', return_url = True):
+    def get_comments_from_url_table(self, t_name = 'comments_from_url'):
 
         cursor = self.cnx.cursor()
 
         query = ("SELECT u.url, c.comments FROM unique_urls_from_links u INNER JOIN comments_from_url c ON u.id = c.u_id")
+        cursor.execute(query)
+
+        return {c[0]:c[1] for c in cursor}
+
+    def get_comments_from_path_table(self, t_name = 'comments_from_paths'):
+
+        cursor = self.cnx.cursor()
+
+        query = ("SELECT u.url, c.comments FROM unique_paths_from_links u INNER JOIN comments_from_paths c ON u.id = c.u_id")
         cursor.execute(query)
 
         return {c[0]:c[1] for c in cursor}
