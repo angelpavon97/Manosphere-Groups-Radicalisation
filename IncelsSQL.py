@@ -33,7 +33,7 @@ class IncelsSQL:
 
         return regex
 
-    def __process_domain(self, domain, path = None):
+    def __process_domain(self, domain, path = None, query = None):
 
         if path != None:
             if len(path) >= 2:
@@ -49,6 +49,9 @@ class IncelsSQL:
             domain = domain[:-1]
         if domain[-2] == ')':
             domain = domain[:-2]
+
+        if query != None:
+            domain = domain + '?' + query
         
         return domain
 
@@ -64,6 +67,17 @@ class IncelsSQL:
             text = text.replace('youtu.be', 'youtube.com')
 
         return text
+
+    def __process_query(self, domain, query):
+
+        if 'youtu' in domain:
+            if 'youtu' in query and ']' in query: # Fix bug in youtube url extraction
+                query = query[:query.index(']')]    
+            
+            return query
+
+        else:
+            return None
 
     def close_connection(self):
         self.cnx.close()
@@ -228,9 +242,11 @@ class IncelsSQL:
             else:
                 domain = ext.domain + '.' + ext.suffix
 
-            path = PurePosixPath(unquote(urlparse(url).path)).parts
+            parser = urlparse(url)
+            path = PurePosixPath(unquote(parser.path)).parts
+            query = self.__process_query(domain, parser.query)
 
-            domain = self.__process_domain(domain, path)
+            domain = self.__process_domain(domain, path, query)
 
             if domain in unique_urls:
                 unique_urls[domain] += 1
@@ -407,7 +423,7 @@ class IncelsSQL:
                 n_comments += self.get_n_comments_from_link(i)
 
             print('\turl id: ', u_id, ' url: ', url, ' Number of comments: ', n_comments)
-            self.update_n_comments(u_id, n_comments)
+            self.update_n_comments(u_id, n_comments, paths)
 
 
     def get_most_commented_urls(self):
@@ -484,4 +500,93 @@ class IncelsSQL:
         cursor.execute(query)
 
         return {c[0]:c[1] for c in cursor}
+
+    def get_users_from_link(self, u_id):
+
+        cursor = self.cnx.cursor()
+
+        query = ("SELECT author FROM comments WHERE link_id = %s") # high computational time (5-10 secs)
+        values = (u_id,)
+        cursor.execute(query, values)
+
+        users = [c[0] for c in cursor]
+
+        return list(set(users))
+
+    def update_n_user(self, u_id, n_users, paths = False):
+        cursor = self.cnx.cursor()
+
+        if paths == False:
+            query = ("UPDATE unique_urls_from_links SET n_users = %s WHERE id = %s")
+        else:
+            query = ("UPDATE unique_paths_from_links SET n_users = %s WHERE id = %s")
+
+        values = (n_users, u_id)
+        cursor.execute(query, values)
+
+        self.cnx.commit()
+
+    def save_n_users(self, paths = False):
+        cursor = self.cnx.cursor()
+
+        if paths == False:
+            unique_urls = self.get_unique_urls_from_links(n_occurrences=10, return_id=True)
+        else:
+            unique_urls = self.get_unique_paths_from_links(n_occurrences=5, return_id=True)
+
+        unique_urls = {k: v for k, v in sorted(unique_urls.items(), key=lambda item: item[0], reverse=True)}
+        print(unique_urls)
+
+        for u_id, url in unique_urls.items():
+            ids = self.get_links_ids_with_url(u_id, paths=paths)
+            users = []
+
+            print(u_id, url)
+            for count, i in enumerate(ids):
+                print('\t', count+1, '/', len(ids))
+                users += self.get_users_from_link(i)
+
+            users = list(set(users))
+            print('\turl id: ', u_id, ' url: ', url, ' Number of users: ', len(users))
+            self.update_n_user(u_id, len(users), paths)
+
+    def get_n_users(self, paths = False):
+        cursor = self.cnx.cursor()
+
+        if paths == False:
+            query = ("SELECT url, n_users FROM unique_urls_from_links")
+        else:
+            query = ("SELECT url, n_users FROM unique_paths_from_links")
+
+        cursor.execute(query)
+        urls_users = {c[0]:c[1] for c in cursor}
+        return dict(sorted(urls_users.items(), key=lambda item: item[1], reverse=True))
+
+    def save_n_comments_and_n_users(self, paths = False):
+        cursor = self.cnx.cursor()
+
+        if paths == False:
+            unique_urls = self.get_unique_urls_from_links(n_occurrences=10, return_id=True)
+        else:
+            unique_urls = self.get_unique_paths_from_links(n_occurrences=5, return_id=True)
+
+        unique_urls = {k: v for k, v in sorted(unique_urls.items(), key=lambda item: item[0], reverse=True)}
+        print(unique_urls)
+
+        for u_id, url in unique_urls.items():
+            ids = self.get_links_ids_with_url(u_id, paths=paths)
+
+            users = []
+            n_comments = 0
+
+            print(u_id, url)
+            for count, i in enumerate(ids):
+                print('\t', count+1, '/', len(ids))
+                n_comments += self.get_n_comments_from_link(i)
+                users += self.get_users_from_link(i)
+
+            users = list(set(users))
+            print('\turl id: ', u_id, ' url: ', url, 'Number comments:', n_comments, ' Number of users: ', len(users))
+            self.update_n_user(u_id, len(users), paths)
+            self.update_n_comments(u_id, n_comments, paths)
     
