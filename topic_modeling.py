@@ -1,10 +1,13 @@
 from IncelsSQL import IncelsSQL
 
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
 import re
 from nltk.corpus import stopwords
 from nltk import word_tokenize, pos_tag
 from nltk.stem.porter import *
+from nltk.stem import WordNetLemmatizer
 
 import scipy.sparse
 from sklearn.feature_extraction.text import CountVectorizer
@@ -52,21 +55,24 @@ def process_text(text):
     # Remove urls
     text = remove_urls(text)
 
+    # remove non alphanumeric characters
+    text = re.sub('[\W_]+', ' ', text, flags=re.UNICODE)
+
     # Tokenization
     tokenized = word_tokenize(text)
 
     # Stop words
     stop_words = stopwords.words('english')
-    stop_words.extend(['https', 'http', 'www', 'html', 'get_simple'])
+    stop_words.extend(['https', 'http', 'www', 'html', 'get_simple', 'com', 'click', 'archive', 'amp', 'auto', 'sub', 'url'])
 
     # Removing stop words and keeping adj and nouns
     nouns_adj = [word for (word, pos) in pos_tag(tokenized) if is_noun_or_adj(pos) and word not in stop_words]
 
     # Stemming
-    stemmer = PorterStemmer()
-    stemmed_tokens = [stemmer.stem(token) for token in nouns_adj]
+    lemmatizer = WordNetLemmatizer()
+    lemmatized_tokens = [lemmatizer.lemmatize(token) for token in nouns_adj]
 
-    return ' '.join(stemmed_tokens)
+    return ' '.join(lemmatized_tokens)
 
 def get_df_example():
 
@@ -132,7 +138,7 @@ def apply_lda(corpus, id2word, num_topics, passes, save_model = True):
     return topics, assigned_topics
 
 
-def get_topics(df, dt_matrix, num_topics = 4, passes = 10):
+def get_topics(dt_matrix, cv, num_topics = 4, passes = 10):
 
     # Create the gensim corpus
     corpus = matutils.Sparse2Corpus(scipy.sparse.csr_matrix(dt_matrix.transpose()))
@@ -156,8 +162,39 @@ def save_topics(file_name, topics, assigned_topics):
     for a in assigned_topics:
         f.write(str(a[1]) + '\t\t\t' + str(a[0]) + '\n')
 
-    print('Topics saved successfully.')
     f.close()
+
+def get_topics_matrix(assigned_topics, n_topics):
+
+    n_urls = len(assigned_topics)
+    m = np.zeros((n_urls, n_topics))
+    labels = []
+
+    for i,a in enumerate(assigned_topics):
+        labels.append(a[1])
+
+        for topic, percentage in a[0]:
+            m[i][topic] = percentage
+
+    return m, labels
+    
+def save_topics_matrix(file_name, assigned_topics, n_topics):
+    
+    m, labels = get_topics_matrix(assigned_topics, n_topics)
+
+    fig = plt.figure(figsize=(4,30))
+    ax = fig.add_subplot(111)
+    cax = ax.matshow(m, interpolation='nearest', aspect='auto')
+    fig.colorbar(cax)
+
+    ax.set_xticks([r for r in range(n_topics)])
+    ax.set_xticklabels([r for r in range(n_topics)])
+    ax.set_yticks(np.arange(len(labels)))
+    ax.set_yticklabels(['']+labels)
+
+    # plt.show()
+
+    fig.savefig('./topic_modeling/matrixes/' + file_name, bbox_inches = 'tight')
 
 # MAIN
 if __name__ == "__main__":
@@ -168,7 +205,6 @@ if __name__ == "__main__":
     # Get data
     print('Getting data...')
     df = get_df(paths)
-    # df = df.drop([0, 1])
     print(df)
 
     # Process comments
@@ -178,7 +214,7 @@ if __name__ == "__main__":
 
     # Counter vectorizer model
     print('Creating counter vectorizer model...')
-    cv = CountVectorizer(max_df=.8)
+    cv = CountVectorizer(max_df=.75)
 
     # Get document term matrix
     print('Getting document term matrix...')
@@ -186,19 +222,22 @@ if __name__ == "__main__":
 
     # Get topics
     n_topics = [8, 9, 10, 11, 12]
-    passes = [100, 500]
+    passes = [100, 500, 1000]
 
     for n in n_topics:
         for p in passes:
             # Get assigned topics
             print('Getting ' + str(n) + ' topics with ' + str(p) + ' passes...')
-            topics, assigned_topics = get_topics(df, dt_matrix, num_topics=n, passes=p)
+            topics, assigned_topics = get_topics(dt_matrix, cv, num_topics=n, passes=p)
 
             # Save topics
             print('Saving ' + str(n) + ' topics with ' + str(p) + ' passes...')
             if paths == True:
-                file_name = 'incelsPaths_' + str(n) + '_topics_' + str(p) + '_passes.txt'
+                file_name = 'incelsPaths_' + str(n) + '_topics_' + str(p) + '_passes'
             else:
-                file_name = 'incelsURLS_' + str(n) + '_topics_' + str(p) + '_passes.txt'
+                file_name = 'incelsURLS_' + str(n) + '_topics_' + str(p) + '_passes'
 
-            save_topics(file_name, topics, assigned_topics)
+            save_topics(file_name + '.txt', topics, assigned_topics)
+            save_topics_matrix(file_name + '.png', assigned_topics, n)
+
+            print('Topics saved successfully.')
