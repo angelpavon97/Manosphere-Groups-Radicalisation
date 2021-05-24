@@ -589,4 +589,40 @@ class IncelsSQL:
             print('\turl id: ', u_id, ' url: ', url, 'Number comments:', n_comments, ' Number of users: ', len(users))
             self.update_n_user(u_id, len(users), paths)
             self.update_n_comments(u_id, n_comments, paths)
+
+    def get_comments_from_links_stats(self):
+
+        cursor = self.cnx.cursor()
+        query = ("SELECT id, self_text FROM links")
+        cursor.execute(query)
+
+        query_res = [c for c in cursor]
+
+        regex = self.__get_url_regex()
+        find_urls = re.compile(regex, re.IGNORECASE)
+
+        n_links_with_url = 0
+        n_comments_with_url = 0
+
+        for i, c in enumerate(query_res):
+            print(str(i), '/', str(len(query_res)))
+            u_id = c[0]
+
+            if c[1] != None:
+                text = c[1].decode('UTF-8')
+                found_urls = find_urls.findall(text)
+                
+                if found_urls != []:
+                    n_links_with_url += 1
+                    n_comments_with_url += self.get_n_comments_from_link(u_id)
+
+        n_links_without_url = len(query_res) - n_links_with_url
+
+        query = ("SELECT COUNT(*) FROM comments")
+        cursor.execute(query)
+        n_comments = sum([c[0] for c in cursor])
+
+        n_comments_without_url = n_comments - n_comments_with_url
+
+        return n_links_with_url, n_links_without_url, n_comments_with_url, n_comments_without_url
     
