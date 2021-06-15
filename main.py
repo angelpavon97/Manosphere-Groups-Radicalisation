@@ -3,14 +3,15 @@ from random import randint
 import matplotlib.pyplot as plt
 from wordcloud import WordCloud, STOPWORDS, ImageColorGenerator
 import numpy as np
+import time
 
 def reduce_dictionary(dictionary, min = 200, max = 400):
     return {k:dictionary[k] for k in dictionary if dictionary[k] > min and dictionary[k] <= max}
 
-def plot_dictionary(dictionary, min, max):
+def plot_dictionary(dictionary, min, max, color='orange'):
     d = reduce_dictionary(dictionary, min, max)
 
-    plt.bar(range(len(d)), list(d.values()), align='center', color = 'green')
+    plt.bar(range(len(d)), list(d.values()), align='center', color = color)
     plt.xticks(range(len(d)), list(d.keys()), rotation='vertical')
     plt.show()
 
@@ -33,7 +34,7 @@ def plot_word_cloud(text, file_name='word_cloud', folder='comments'):
     file_name = file_name.replace('/', '_').replace('.', '_') + '.png'
 
     stopwords = set(STOPWORDS)
-    stopwords.update(['https', 'http', 'www'])
+    stopwords.update(['https', 'http', 'www', 'html', 'get_simple', 'com', 'click', 'archive', 'amp', 'auto', 'sub', 'url', 'org'])
 
     wordcloud = WordCloud(width=800, height=400, stopwords=stopwords, background_color='white').generate(text)
     wordcloud.to_file('img/word_clouds/' + folder + '/' + file_name)
@@ -44,17 +45,22 @@ def plot_word_cloud(text, file_name='word_cloud', folder='comments'):
 
     return
 
-def save_unique_urls_comments(connection):
+def save_unique_urls_comments(connection, paths=False):
     
     urls = connection.get_urls_from_comments()
     unique_urls = connection.get_domains_path(urls)
 
-    # plot_dictionary(unique_urls, 1000, 1000000)
-    # plot_dictionary(unique_urls, 400, 1000)
-    # plot_dictionary(unique_urls, 200, 400)
-    # plot_dictionary(unique_urls, 100, 200)
+    if paths == False:
+        unique_urls = connection.get_domains(urls)
+        connection.save_urls(unique_urls, t_name='unique_urls_from_comments')
+    else:
+        unique_urls = connection.get_domains_path(urls)
+        connection.save_urls(unique_urls, t_name='unique_paths_from_comments')
 
-    connection.save_urls(unique_urls, t_name='unique_urls_from_comments')
+    plot_dictionary(unique_urls, 1000, 1000000)
+    plot_dictionary(unique_urls, 400, 1000)
+    plot_dictionary(unique_urls, 200, 400)
+    plot_dictionary(unique_urls, 100, 200)
 
 def save_unique_urls_links(connection, paths=False):
     
@@ -67,7 +73,8 @@ def save_unique_urls_links(connection, paths=False):
         unique_urls = connection.get_domains_path(urls)
         connection.save_urls(unique_urls, t_name='unique_paths_from_links')
         
-    # plot_dictionary(unique_urls, 5, 10) 
+    plot_dictionary(unique_urls, 100, 1000000)
+    plot_dictionary(unique_urls, 10, 1000000)
 
 def get_word_clouds_comments(connection):
     urls = connection.get_unique_urls_from_comments(n_occurrences=100)
@@ -102,49 +109,66 @@ def get_word_clouds_links_comments(connection, paths=False):
         unique_urls = connection.get_unique_paths_from_links(n_occurrences=5, return_id=True)
 
     unique_urls = {k: v for k, v in sorted(unique_urls.items(), key=lambda item: item[0], reverse=True)}
-    print(unique_urls)
 
     for u_id, url in unique_urls.items():
-        ids = connection.get_links_ids_with_url(u_id, paths=paths)
-        comments = []
+        text = connection.get_full_text_from_url(u_id, paths)
 
-        print(u_id, url)
-        for count, i in enumerate(ids):
-            print('\t', count+1, '/', len(ids))
-            comments = comments + connection.get_comments_from_link(i)
-
-        print('\turl id: ', u_id, ' url: ', url, ' Number of comments: ', len(comments))
-        connection.update_n_comments(u_id, len(comments), paths=paths)
-
-        if(len(comments) > 0):
+        if(len(text) > 0):
             if paths==False:
-                plot_word_cloud(' '.join(comments), url, folder='links_comments')
+                plot_word_cloud(text, url, folder='links_comments')
             else:
-                plot_word_cloud(' '.join(comments), url, folder='links_comments_p')
+                plot_word_cloud(text, url, folder='links_comments_p')
 
 # MAIN
 if __name__ == "__main__":
+
+    # Start connection
+    print('Start connection...')
     connection = IncelsSQL()
+    time.sleep(10) # 10 seconds before removing a table for creating it again
 
-    # print('Saving unique urls from comments...')
-    # save_unique_urls_comments(connection)
-    # print('Saving unique urls from links...')
-    # save_unique_urls_links(connection, paths=True)
+    # # CREATING AND UPDATING TABLES
+    print('Saving unique urls from comments...')
+    save_unique_urls_comments(connection)
+    print('Saving unique urls from links...')
+    save_unique_urls_links(connection, paths=True)
 
-    # print('Saving word clouds from comments...')
-    # get_word_clouds_comments(connection)
-    # print('Saving word clouds from links...')
-    # get_word_clouds_links(connection)
+    print('Saving relation between links and unique paths...')
+    connection.save_links_ids_with_url(t_name='paths_links_ids', paths=True)
+    print('Saving relation between links and unique domains...')
+    connection.save_links_ids_with_url(t_name='urls_links_ids', paths=False)
 
-    # print('Saving relation between links and unique paths...')
-    # connection.save_links_ids_with_url(t_name='paths_links_ids', paths=True)
-    # print('Saving word clouds from links comments...')
-    # get_word_clouds_links_comments(connection, paths=True)
+    print('Saving number of users and number of comments...')
+    connection.save_n_comments_and_n_users(paths=True)
+    connection.save_n_comments_and_n_users(paths=False)
 
-    # print('Saving number of comments...')
-    # connection.save_number_comments(paths=True)
+    # # STATS
+    links_url, links_no_url, comments_url, comments_no_url = connection.get_comments_from_links_stats()
+    print('Links with url:', str(links_url), 'Comments from links with url:', str(comments_url))
+    print('Links without url:', str(links_no_url), 'Comments from links without url:', str(comments_no_url))
+    print('Avarege comments for links with url:', str(comments_url/links_url))
+    print('Avarege comments for links without url:', str(comments_no_url/links_no_url))
+
+    # # PLOTING
 
     print('Showing most commented paths...')
-    plot_dictionary(connection.get_most_commented_paths(), 200, 1000)
-    
+    plot_dictionary(connection.get_most_commented_paths(), 1000, 1000000, color='green')
+    plot_dictionary(connection.get_most_commented_paths(), 200, 1000, color='green')
+    plot_dictionary(connection.get_n_users(paths=True), 100, 10000, color='red')
+    plot_dictionary(connection.get_n_users(paths=True), 10, 100, color='red')
+
+    # # TOPICS
+
+    connection.save_comments_urls(t_name = 'comments_from_url', paths = False)
+    connection.save_comments_urls(t_name = 'comments_from_paths', paths = True)   
+
+    # # WORD CLOUDS
+
+    print('Saving word clouds from comments...')
+    get_word_clouds_comments(connection)
+    print('Saving word clouds from links...')
+    get_word_clouds_links(connection)
+    print('Saving word clouds from links comments...')
+    get_word_clouds_links_comments(connection, paths=True)
+
     connection.close_connection()

@@ -625,4 +625,18 @@ class IncelsSQL:
         n_comments_without_url = n_comments - n_comments_with_url
 
         return n_links_with_url, n_links_without_url, n_comments_with_url, n_comments_without_url
-    
+
+    def get_full_text_from_url(self, u_id, paths = False):
+
+        cursor = self.cnx.cursor()
+
+        if paths == False:
+            query = ("SELECT comments FROM comments_from_url WHERE u_id = %s")
+        else:
+            query = ("SELECT comments FROM comments_from_paths WHERE u_id = %s")
+        values = (u_id,)
+        cursor.execute(query, values)
+
+        text = [c[0] for c in cursor][0]
+     
+        return text
