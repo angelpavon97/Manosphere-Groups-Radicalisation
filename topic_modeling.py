@@ -196,6 +196,75 @@ def save_topics_matrix(file_name, assigned_topics, n_topics):
 
     fig.savefig('./topic_modeling/matrixes/' + file_name, bbox_inches = 'tight')
 
+def apply_RCD(assigned_topics):
+    # Apply Ranking-based Clustering
+    clusters_RCD = {}
+
+    for a in assigned_topics:
+        url = a[1] 
+        highest_topic = a[0][0][0] # cluster name
+
+        if highest_topic in clusters_RCD:
+            clusters_RCD[highest_topic].append(url)
+        else:
+            clusters_RCD[highest_topic] = [url]
+
+    return clusters_RCD
+
+def apply_CRDC(assigned_topics, threshold = 0.98):
+    # Apply Cumulative Ranking-based Clustering
+    clusters_CRDC = {}
+
+    for a in assigned_topics:
+        url = a[1]
+        cluster_name = ''
+
+        sum = 0
+
+        for t in a[0]:
+            cluster_name += str(t[0])
+            sum += t[1]
+
+            if sum > threshold:
+                break
+
+        if cluster_name in clusters_CRDC:
+            clusters_CRDC[cluster_name].append(url)
+        else:
+            clusters_CRDC[cluster_name] = [url]
+
+    return clusters_CRDC
+
+def save_topics_clustering(file_name, assigned_topics, threshold = 0.98):
+
+    # Clustering 1: Ranking-based clustering
+    clusters_RCD = apply_RCD(assigned_topics)
+
+    f = open('./topic_modeling/clustering/RCD/' + file_name, 'w')
+    f.write('RANKING-BASED CLUSTERING\n')
+
+    for c_name, url_list in clusters_RCD.items():
+        f.write('\nCluster ' + str(c_name))
+
+        for url in url_list:
+            f.write('\n\t' + url)
+
+    f.close()
+
+    # Clustering 2: Cumulative Ranking-based Clustering
+    clusters_CRDC = apply_CRDC(assigned_topics, threshold)
+    
+    f = open('./topic_modeling/clustering/CRCD/' + file_name, 'w')
+    f.write('CUMULATIVE RANKING-BASED CLUSTERING\n')
+
+    for c_name, url_list in clusters_CRDC.items():
+        f.write('\nCluster ' + str(c_name))
+
+        for url in url_list:
+            f.write('\n\t' + url)
+
+    f.close()
+
 # MAIN
 if __name__ == "__main__":
 
@@ -239,5 +308,6 @@ if __name__ == "__main__":
 
             save_topics(file_name + '.txt', topics, assigned_topics)
             save_topics_matrix(file_name + '.png', assigned_topics, n)
+            save_topics_clustering(file_name + '.txt', assigned_topics)
 
             print('Topics saved successfully.')
