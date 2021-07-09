@@ -44,6 +44,7 @@ class IncelsSQL:
                 domain += '/' + path[3]
 
         domain = self.__process_text(domain)
+        domain = domain.replace('www.', '')
         
         if domain[-1] == ')':
             domain = domain[:-1]
@@ -112,12 +113,16 @@ class IncelsSQL:
 
         return comments
 
-    def get_text_links(self):
+    def get_text_links(self, community = None):
         cursor = self.cnx.cursor()
 
-        query = ("SELECT self_text FROM links")
-
-        cursor.execute(query)
+        if community == None:
+            query = ("SELECT self_text FROM links")
+            cursor.execute(query)
+        else:
+            query = ("SELECT self_text FROM links WHERE subreddit_id = %s")
+            values = (community,)
+            cursor.execute(query, values)
 
         t_list = []
 
@@ -126,6 +131,23 @@ class IncelsSQL:
                 t_list.append(text[0].decode('UTF-8'))
 
         return t_list
+
+    def get_ids_and_text_links(self, community):
+
+        cursor = self.cnx.cursor()
+
+        query = ("SELECT id, self_text FROM links WHERE subreddit_id = %s")
+        values = (community,)
+        cursor.execute(query, values)
+
+        l_list = []
+
+        for c in cursor:
+            link_id, text = c
+            if text != None:
+                l_list.append((link_id, text.decode('UTF-8')))
+
+        return l_list
 
     def get_urls_statistics(self):
         cursor = self.cnx.cursor()

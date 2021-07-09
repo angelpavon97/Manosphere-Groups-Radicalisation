@@ -37,7 +37,7 @@ def plot_word_cloud(text, file_name='word_cloud', folder='comments'):
     stopwords.update(['https', 'http', 'www', 'html', 'get_simple', 'com', 'click', 'archive', 'amp', 'auto', 'sub', 'url', 'org'])
 
     wordcloud = WordCloud(width=800, height=400, stopwords=stopwords, background_color='white').generate(text)
-    wordcloud.to_file('img/word_clouds/' + folder + '/' + file_name)
+    wordcloud.to_file('Images/word_clouds/' + folder + '/' + file_name)
 
     # plt.imshow(wordcloud, interpolation='bilinear')
     # plt.axis("off")
@@ -73,8 +73,8 @@ def save_unique_urls_links(connection, paths=False):
         unique_urls = connection.get_domains_path(urls)
         connection.save_urls(unique_urls, t_name='unique_paths_from_links')
         
-    plot_dictionary(unique_urls, 100, 1000000)
-    plot_dictionary(unique_urls, 10, 1000000)
+    plot_dictionary(unique_urls, 100, 1000000, color = 'blue')
+    plot_dictionary(unique_urls, 10, 1000000, color = 'blue')
 
 def get_word_clouds_comments(connection):
     urls = connection.get_unique_urls_from_comments(n_occurrences=100)
@@ -119,6 +119,143 @@ def get_word_clouds_links_comments(connection, paths=False):
             else:
                 plot_word_cloud(text, url, folder='links_comments_p')
 
+def get_feedback_posts_between_communities(connection):
+
+    communities = {'t5_2sjgc': 'MGTOW',
+                   't5_2zlzd': 'badwomensanatomy',
+                   't5_3jxsz': 'IncelsWithoutHate',
+                   't5_3kvtt': 'IncelTears',
+                   't5_3m7dc': 'IncelsInActions',
+                   't5_3pci5': 'Braincels',
+                   't5_hnz41': 'Trufemcels'}
+
+    for c_id, c_name in communities.items():
+
+        links_text = connection.get_text_links(community=c_id) # Obtain links where subreddit_id = c_id
+
+        communities_count = {'t5_2sjgc': 0,
+                             't5_2zlzd': 0,
+                             't5_3jxsz': 0,
+                             't5_3kvtt': 0,
+                             't5_3m7dc': 0,
+                             't5_3pci5': 0,
+                             't5_hnz41': 0,
+                             'red_pill': 0,
+                             'incels_me': 0,
+                             'mgtow_com': 0}
+
+        for text in links_text: # For each link search
+
+            # Process text
+            text = text.lower()
+            if 'redd' in text:
+                text = text.replace('redd.it', 'reddit.com')
+                text = text.replace('np.reddit', 'reddit')
+
+            # Count
+            if 'reddit.com/r/mgtow' in text:
+                communities_count['t5_2sjgc']+=1
+            elif 'reddit.com/r/badwomensanatomy' in text:
+                communities_count['t5_2zlzd']+=1
+            elif 'reddit.com/r/incelswithouthate' in text:
+                communities_count['t5_3jxsz']+=1
+            elif 'reddit.com/r/inceltears' in text:
+                communities_count['t5_3kvtt']+=1
+            elif 'reddit.com/r/incelsinaction' in text:
+                communities_count['t5_3m7dc']+=1
+            elif 'reddit.com/r/braincels' in text:
+                communities_count['t5_3pci5']+=1
+            elif 'reddit.com/r/trufemcels' in text:
+                communities_count['t5_hnz41']+=1
+            elif 'reddit.com/r/theredpill' in text:
+                communities_count['red_pill']+=1
+            elif 'incels.me' in text:
+                communities_count['incels_me']+=1
+            elif 'mgtow.com' in text:
+                communities_count['mgtow_com']+=1
+            
+
+        print(c_name + ' feedback:')
+        print('\t' + 'MGTOW: ' + str(communities_count['t5_2sjgc']))
+        print('\t' + 'badwomensanatomy: ' + str(communities_count['t5_2zlzd']))
+        print('\t' + 'IncelsWithoutHate: ' + str(communities_count['t5_3jxsz']))
+        print('\t' + 'IncelTears: ' + str(communities_count['t5_3kvtt']))
+        print('\t' + 'IncelsInActions: ' + str(communities_count['t5_3m7dc']))
+        print('\t' + 'Braincels: ' + str(communities_count['t5_3pci5']))
+        print('\t' + 'Trufemcels: ' + str(communities_count['t5_hnz41']))
+        print('\t' + 'TheRedPill: ' + str(communities_count['red_pill']))
+        print('\t' + 'Incels.me: ' + str(communities_count['incels_me']))
+        print('\t' + 'MGTOW.com: ' + str(communities_count['mgtow_com']))
+
+def get_feedback_comments_between_communities(connection):
+
+    communities = {'t5_2sjgc': 'MGTOW',
+                   't5_2zlzd': 'badwomensanatomy',
+                   't5_3jxsz': 'IncelsWithoutHate',
+                   't5_3kvtt': 'IncelTears',
+                   't5_3m7dc': 'IncelsInActions',
+                   't5_3pci5': 'Braincels',
+                   't5_hnz41': 'Trufemcels'}
+
+    for c_id, c_name in communities.items():
+
+        links = connection.get_ids_and_text_links(community=c_id) # Obtain links where subreddit_id = c_id
+
+        communities_count = {'t5_2sjgc': 0,
+                             't5_2zlzd': 0,
+                             't5_3jxsz': 0,
+                             't5_3kvtt': 0,
+                             't5_3m7dc': 0,
+                             't5_3pci5': 0,
+                             't5_hnz41': 0,
+                             'red_pill': 0,
+                             'incels_me': 0,
+                             'mgtow_com': 0}
+
+        for t in links: # For each link search
+            link_id, text = t
+
+            # Process text
+            text = text.lower()
+            if 'redd' in text:
+                text = text.replace('redd.it', 'reddit.com')
+                text = text.replace('np.reddit', 'reddit')
+
+            # Count
+            if 'reddit.com/r/mgtow' in text:
+                communities_count['t5_2sjgc']+= connection.get_n_comments_from_link(link_id)
+            elif 'reddit.com/r/badwomensanatomy' in text:
+                communities_count['t5_2zlzd']+= connection.get_n_comments_from_link(link_id)
+            elif 'reddit.com/r/incelswithouthate' in text:
+                communities_count['t5_3jxsz']+= connection.get_n_comments_from_link(link_id)
+            elif 'reddit.com/r/inceltears' in text:
+                communities_count['t5_3kvtt']+= connection.get_n_comments_from_link(link_id)
+            elif 'reddit.com/r/incelsinaction' in text:
+                communities_count['t5_3m7dc']+= connection.get_n_comments_from_link(link_id)
+            elif 'reddit.com/r/braincels' in text:
+                communities_count['t5_3pci5']+= connection.get_n_comments_from_link(link_id)
+            elif 'reddit.com/r/trufemcels' in text:
+                communities_count['t5_hnz41']+= connection.get_n_comments_from_link(link_id)
+            elif 'reddit.com/r/theredpill' in text:
+                communities_count['red_pill']+= connection.get_n_comments_from_link(link_id)
+            elif 'incels.me' in text:
+                communities_count['incels_me']+= connection.get_n_comments_from_link(link_id)
+            elif 'mgtow.com' in text:
+                communities_count['mgtow_com']+= connection.get_n_comments_from_link(link_id)
+            
+
+        print(c_name + ' feedback:')
+        print('\t' + 'MGTOW: ' + str(communities_count['t5_2sjgc']))
+        print('\t' + 'badwomensanatomy: ' + str(communities_count['t5_2zlzd']))
+        print('\t' + 'IncelsWithoutHate: ' + str(communities_count['t5_3jxsz']))
+        print('\t' + 'IncelTears: ' + str(communities_count['t5_3kvtt']))
+        print('\t' + 'IncelsInActions: ' + str(communities_count['t5_3m7dc']))
+        print('\t' + 'Braincels: ' + str(communities_count['t5_3pci5']))
+        print('\t' + 'Trufemcels: ' + str(communities_count['t5_hnz41']))
+        print('\t' + 'TheRedPill: ' + str(communities_count['red_pill']))
+        print('\t' + 'Incels.me: ' + str(communities_count['incels_me']))
+        print('\t' + 'MGTOW.com: ' + str(communities_count['mgtow_com']))
+
 # MAIN
 if __name__ == "__main__":
 
@@ -130,7 +267,9 @@ if __name__ == "__main__":
     # # CREATING AND UPDATING TABLES
     print('Saving unique urls from comments...')
     save_unique_urls_comments(connection)
-    print('Saving unique urls from links...')
+    print('Saving unique paths from links...')
+    save_unique_urls_links(connection, paths=True)
+    print('Saving unique domains from links...')
     save_unique_urls_links(connection, paths=True)
 
     print('Saving relation between links and unique paths...')
@@ -153,9 +292,18 @@ if __name__ == "__main__":
 
     print('Showing most commented paths...')
     plot_dictionary(connection.get_most_commented_paths(), 1000, 1000000, color='green')
-    plot_dictionary(connection.get_most_commented_paths(), 200, 1000, color='green')
+    plot_dictionary(connection.get_most_commented_paths(), 500, 1000, color='green')
+    print('Showing most commented domains...')
+    plot_dictionary(connection.get_most_commented_urls(), 1000, 1000000, color='green')
+    plot_dictionary(connection.get_most_commented_urls(), 500, 1000, color='green')
+    print('Showing number of users...')
     plot_dictionary(connection.get_n_users(paths=True), 100, 10000, color='red')
     plot_dictionary(connection.get_n_users(paths=True), 10, 100, color='red')
+
+    # # FEEDBACK
+    print('Showing feedback between communities...')
+    get_feedback_posts_between_communities(connection)
+    get_feedback_comments_between_communities(connection)
 
     # # TOPICS
 
