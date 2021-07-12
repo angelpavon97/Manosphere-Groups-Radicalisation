@@ -16,9 +16,8 @@ The structure of this repository is as follows:
   - **models**: Contains trained LDA models on the comments of the links using as parameters different numbers of topics and iterations.
   - **text_razor**: Contains the topics extracted by a categorisation tool (TextRazor).
   - **topics**: Contains files summarising the data obtained from the trained LDA models. Thus, each file has the same name as the trained models in the _models_ folder and contains the topics obtained as well as the topics assigned to each link.
+- **TFM_InformationSharing_ManosphereGroups.pdf**: Master's thesis report discussing the proposed research questions and their results.
 - ***IncelsSQL.py***: It contains the IncelsSQL class, a class used to create and manage the different tables of the database to facilitate the extraction of the results.
 - ***main.py***: Main program used to create tables from the data base and obtain the graphs showing the most relevant information.
 - ***text_razor.py***: Script that uses the TextRazor tool to categorise urls according to their comments.
 - ***topic_modeling.py***: Script that applies topic modelling as well as the use of these models to obtain the matrixes and apply the clustering techniques mentioned above.
-
-Documentation: https://www.overleaf.com/read/nrxfhtwxgrpk
